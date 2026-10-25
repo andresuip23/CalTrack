@@ -10,60 +10,80 @@ export function FoodSearchModal() {
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
   const [selectedFood, setSelectedFood] = useState(null);
   const [grams, setGrams] = useState(100);
 
   if (!isSearchOpen) return null;
+
+  const closeModal = () => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    setResults([]);
+    setSearched(false);
+    setSelectedFood(null);
+    setGrams(100);
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
 
     setLoading(true);
+    setSearched(false);
     try {
       const apiKey = import.meta.env.VITE_USDA_API_KEY || 'DEMO_KEY';
       const res = await fetch(
-        `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}&query=${encodeURIComponent(searchQuery)}&pageSize=5`
+        `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}` +
+          `&query=${encodeURIComponent(searchQuery)}` +
+          `&dataType=Foundation,SR%20Legacy` +
+          `&pageSize=10`
       );
       const data = await res.json();
 
-      if (data.foods) {
-        const parsed = data.foods.map((food) => {
-          const getNutrient = (id) => {
+      const parsed = (data.foods || []).map((food) => {
+        const getNutrient = (...ids) => {
+          for (const id of ids) {
             const n = food.foodNutrients?.find((item) => item.nutrientId === id);
-            return n ? n.value : 0;
-          };
+            if (n) return n.value;
+          }
+          return 0;
+        };
 
-          return {
-            id: food.fdcId,
-            name: food.description,
-            calories: getNutrient(1008),
-            protein: getNutrient(1003),
-            carbs: getNutrient(1005),
-            fats: getNutrient(1004),
-          };
-        });
-        setResults(parsed);
-      }
+        return {
+          id: food.fdcId,
+          name: food.description,
+          // 1008 = energía en kcal; 2047/2048 son alternativas que usan algunos alimentos
+          calories: getNutrient(1008, 2047, 2048),
+          protein: getNutrient(1003),
+          carbs: getNutrient(1005),
+          fats: getNutrient(1004),
+        };
+      });
+
+      setResults(parsed);
     } catch (err) {
       console.error('Error al buscar en USDA:', err);
+      setResults([]);
     } finally {
       setLoading(false);
+      setSearched(true);
     }
   };
 
   const calculateMacros = (food, g) => {
-    const factor = g / 100;
+    const factor = (Number(g) || 0) / 100;
+    const r1 = (n) => Math.round(n * factor * 10) / 10;
     return {
       calories: Math.round(food.calories * factor),
-      protein: Math.round(food.protein * factor),
-      carbs: Math.round(food.carbs * factor),
-      fats: Math.round(food.fats * factor),
+      protein: r1(food.protein),
+      carbs: r1(food.carbs),
+      fats: r1(food.fats),
     };
   };
 
   const onConfirm = async () => {
-    if (!selectedFood) return;
+    if (!selectedFood || !(grams > 0)) return;
 
     const computed = calculateMacros(selectedFood, grams);
 
@@ -75,9 +95,7 @@ export function FoodSearchModal() {
       fats: computed.fats,
     });
 
-    setSelectedFood(null);
-    setGrams(100);
-    setIsSearchOpen(false);
+    closeModal();
   };
 
   return (
@@ -85,7 +103,7 @@ export function FoodSearchModal() {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-bold text-slate-100">Buscar Alimento (USDA)</h3>
-          <Button variant="ghost" onClick={() => setIsSearchOpen(false)} className="p-1">
+          <Button variant="ghost" onClick={closeModal} className="p-1">
             <X size={20} />
           </Button>
         </div>
@@ -93,7 +111,7 @@ export function FoodSearchModal() {
         <form onSubmit={handleSearch} className="flex gap-2">
           <Input
             type="text"
-            placeholder="Ej. Chicken breast, Oatmeal..."
+            placeholder="Ej. egg whole raw, chicken breast, oatmeal..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1"
@@ -103,7 +121,17 @@ export function FoodSearchModal() {
           </Button>
         </form>
 
+        <p className="text-xs text-slate-500">
+          Busca en inglés para mejores resultados. Valores por cada 100 g.
+        </p>
+
         {loading && <p className="text-center text-xs text-slate-500 py-4">Buscando alimento...</p>}
+
+        {!loading && searched && results.length === 0 && !selectedFood && (
+          <p className="text-center text-xs text-slate-500 py-4">
+            Sin resultados. Prueba con otro término en inglés.
+          </p>
+        )}
 
         {!selectedFood ? (
           <div className="space-y-2">
@@ -115,7 +143,7 @@ export function FoodSearchModal() {
               >
                 <p className="font-semibold text-sm text-slate-200">{food.name}</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  100g = {Math.round(food.calories)} kcal | P: {Math.round(food.protein)}g | C: {Math.round(food.carbs)}g | G: {Math.round(food.fats)}g
+                  100g = {Math.round(food.calories)} kcal | P: {food.protein.toFixed(1)}g | C: {food.carbs.toFixed(1)}g | G: {food.fats.toFixed(1)}g
                 </p>
               </div>
             ))}
@@ -127,6 +155,7 @@ export function FoodSearchModal() {
               <label className="block text-xs text-slate-400 mb-1">Cantidad en gramos (g):</label>
               <Input
                 type="number"
+                min="1"
                 value={grams}
                 onChange={(e) => setGrams(Number(e.target.value))}
                 className="w-full"
@@ -149,7 +178,7 @@ export function FoodSearchModal() {
               <Button variant="ghost" onClick={() => setSelectedFood(null)} className="flex-1 border border-slate-800">
                 Atrás
               </Button>
-              <Button onClick={onConfirm} className="flex-1">
+              <Button onClick={onConfirm} disabled={!(grams > 0)} className="flex-1">
                 <Plus size={16} /> Añadir
               </Button>
             </div>

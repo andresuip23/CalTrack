@@ -2,11 +2,19 @@ import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/layout/Header';
 import { BottomNav } from './components/layout/BottomNav';
+import { AccountBanner } from './components/daily/AccountBanner';
 import { DailySummary } from './components/daily/DailySummary';
+import { WorkoutCard } from './components/daily/WorkoutCard';
+import { SlotSelector } from './components/daily/SlotSelector';
 import { MealForm } from './components/daily/MealForm';
-import { MealList } from './components/daily/MealList';
+import { MealListBySlot } from './components/daily/MealListBySlot';
+import { PresetsTab } from './components/presets/PresetsTab';
+import { ProgressCharts } from './components/weekly/ProgressCharts';
 import { HistoryList } from './components/weekly/HistoryList';
 import { SettingsForm } from './components/settings/SettingsForm';
+import { AccountCard } from './components/settings/AccountCard';
+import { ExerciseSettings } from './components/settings/ExerciseSettings';
+import { MealSlotsEditor } from './components/settings/MealSlotsEditor';
 import { FoodSearchModal } from './components/modal/FoodSearchModal';
 
 function MainContent() {
@@ -19,15 +27,32 @@ function MainContent() {
 
         {activeTab === 'daily' && (
           <>
+            <AccountBanner />
             <DailySummary />
+            <WorkoutCard />
+            <SlotSelector />
             <MealForm />
-            <MealList />
+            <MealListBySlot />
           </>
         )}
 
-        {activeTab === 'weekly' && <HistoryList />}
+        {activeTab === 'presets' && <PresetsTab />}
 
-        {activeTab === 'settings' && <SettingsForm />}
+        {activeTab === 'weekly' && (
+          <>
+            <ProgressCharts />
+            <HistoryList />
+          </>
+        )}
+
+        {activeTab === 'settings' && (
+          <>
+            <AccountCard />
+            <SettingsForm />
+            <ExerciseSettings />
+            <MealSlotsEditor />
+          </>
+        )}
       </div>
 
       <BottomNav />

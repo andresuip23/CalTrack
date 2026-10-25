@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Calendar, Settings } from 'lucide-react';
+import { Flame, Utensils, Calendar, Settings } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export function BottomNav() {
@@ -7,12 +7,13 @@ export function BottomNav() {
 
   const navItems = [
     { id: 'daily', label: 'Hoy', icon: Flame },
+    { id: 'presets', label: 'Mis comidas', icon: Utensils },
     { id: 'weekly', label: 'Semana', icon: Calendar },
     { id: 'settings', label: 'Ajustes', icon: Settings },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 px-6 py-2 flex justify-around items-center z-40">
+    <nav className="fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 px-4 py-2 flex justify-around items-center z-40">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = activeTab === item.id;
